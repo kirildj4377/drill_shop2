@@ -104,7 +104,7 @@ export default function ShopApp() {
     });
   };
 
-  const updateCount = (id, delta) => {
+  const updateCount = (id: any, delta: any) => {
     setCart((prev) =>
       prev
         .map((item) =>
