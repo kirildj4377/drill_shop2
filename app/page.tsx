@@ -71,7 +71,7 @@ export default function ShopApp() {
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [searchQuery, setSearchQuery] = useState('');
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [customer, setCustomer] = useState({
     name: '',
