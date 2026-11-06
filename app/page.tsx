@@ -120,7 +120,7 @@ export default function ShopApp() {
   );
 
   // Отправка заказа в Telegram
-  const handleSendOrder = async (e) => {
+  const handleSendOrder = async (e: any) => {
     e.preventDefault();
     if (cart.length === 0 || !customer.phone) return;
 
