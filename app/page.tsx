@@ -5,8 +5,8 @@ import { ShoppingCart, Search, Check, Trash2, Send, Package, RefreshCw } from 'l
 const CATEGORIES = ['Все', 'Сверла', 'Буры', 'Коронки', 'Метчики', 'Плашки'];
 
 // Вставьте сюда данные вашего Telegram бота
-const TELEGRAM_BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN';
-const TELEGRAM_CHAT_ID = 'YOUR_TELEGRAM_CHAT_ID';
+const TELEGRAM_BOT_TOKEN = '9165001474:AAF2LOnpTU6ZdxiQ2g78AW9bMBG6qv-xpHM';
+const TELEGRAM_CHAT_ID = '-5304119008';
 
 export default function ShopApp() {
   const [products, setProducts] = useState<any[]>([]);
@@ -37,7 +37,7 @@ export default function ShopApp() {
         if (row.length < headers.length) return null;
         const item: any = { id: index + 1 };
         headers.forEach((header, i) => {
-          let val = row[i] ? row[i].trim().replace(/"/g, '') : '';
+          let val: any = row[i] ? row[i].trim().replace(/"/g, '') : '';
           if (header === 'price') val = Number(val) || 0;
           item[header] = val;
         });
