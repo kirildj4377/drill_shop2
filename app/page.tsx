@@ -92,7 +92,7 @@ export default function ShopApp() {
   });
 
   // Работа с корзиной
-  const addToCart = (product) => {
+  const addToCart = (product: any) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
