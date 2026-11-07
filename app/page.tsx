@@ -4,8 +4,8 @@ import { ShoppingCart, Search, Check, Trash2, Send, Package, RefreshCw, Image as
 
 const CATEGORIES = ['Все', 'Сверло', 'Сверла', 'Бур', 'Буры', 'Коронка', 'Коронки', 'Метчик', 'Метчики', 'Плашка', 'Плашки'];
 
-const TELEGRAM_BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN';
-const TELEGRAM_CHAT_ID = 'YOUR_TELEGRAM_CHAT_ID';
+const TELEGRAM_BOT_TOKEN = '9165001474:AAF2LOnpTU6ZdxiQ2g78AW9bMBG6qv-xpHM';
+const TELEGRAM_CHAT_ID = '-5304119008';
 
 export default function ShopApp() {
   const [products, setProducts] = useState<any[]>([]);
@@ -22,7 +22,7 @@ export default function ShopApp() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT.../pub?output=csv';
+      const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTnNXX-vE88eqintLKDluTAtlHDp7HQ-wo_uNBbaB9SKcidb9oWd44VlckmSehp5q4Ps1eIce_e-8uS/pub?output=csv';
       
       const response = await fetch(SHEET_CSV_URL);
       const data = await response.text();
