@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Check, Trash2, Send, Package, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { ShoppingCart, Search, Check, Trash2, Send, Package, RefreshCw, Image as ImageIcon, X } from 'lucide-react';
 
 const CATEGORIES = ['Все', 'Сверло', 'Сверла', 'Бур', 'Буры', 'Коронка', 'Коронки', 'Метчик', 'Метчики', 'Плашка', 'Плашки'];
 
@@ -14,6 +14,7 @@ export default function ShopApp() {
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [activeProduct, setActiveProduct] = useState<any>(null); // Для модального окна товара
   const [customer, setCustomer] = useState({ name: '', phone: '', comment: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSent, setOrderSent] = useState(false);
@@ -65,7 +66,8 @@ export default function ShopApp() {
   });
 
   // Корзина
-  const addToCart = (product: any) => {
+  const addToCart = (product: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation(); // чтобы при клике на кнопку не открывалось модальное окно товара
     setCart((prev: any[]) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
@@ -203,14 +205,18 @@ ${itemsText}
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
-              <div key={product.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col justify-between hover:shadow-lg transition">
+              <div 
+                key={product.id} 
+                onClick={() => setActiveProduct(product)}
+                className="bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col justify-between hover:shadow-xl cursor-pointer transition transform hover:-translate-y-1"
+              >
                 {/* Картинка товара */}
                 <div className="w-full h-48 bg-slate-100 relative flex items-center justify-center overflow-hidden border-b border-slate-100">
                   {product.image ? (
                     <img 
                       src={product.image} 
                       alt={product.name} 
-                      className="w-full h-full object-cover hover:scale-105 transition duration-300"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
                     <div className="flex flex-col items-center text-slate-400">
@@ -235,7 +241,7 @@ ${itemsText}
                       <span className="text-xs font-medium text-slate-500 ml-1">грн</span>
                     </div>
                     <button
-                      onClick={() => addToCart(product)}
+                      onClick={(e) => addToCart(product, e)}
                       className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1 transition"
                     >
                       <ShoppingCart className="w-4 h-4" />
@@ -248,6 +254,73 @@ ${itemsText}
           </div>
         )}
       </main>
+
+      {/* Модальное окно карточки товара */}
+      {activeProduct && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl relative flex flex-col md:flex-row max-h-[90vh]">
+            <button 
+              onClick={() => setActiveProduct(null)} 
+              className="absolute top-4 right-4 z-10 bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-full transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Картинка в модалке */}
+            <div className="w-full md:w-1/2 bg-slate-100 flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-slate-100">
+              {activeProduct.image ? (
+                <img src={activeProduct.image} alt={activeProduct.name} className="max-h-72 object-contain rounded-lg" />
+              ) : (
+                <div className="flex flex-col items-center text-slate-400 py-16">
+                  <ImageIcon className="w-16 h-16 mb-2 opacity-50" />
+                  <span className="text-sm">Нет изображения</span>
+                </div>
+              )}
+            </div>
+
+            {/* Информация в модалке */}
+            <div className="w-full md:w-1/2 p-6 flex flex-col justify-between overflow-y-auto">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                  {activeProduct.category}
+                </span>
+                <h2 className="text-xl font-bold text-slate-900 mt-2">{activeProduct.name}</h2>
+                
+                <div className="mt-4 space-y-2">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase">Характеристики:</h4>
+                  <p className="text-sm text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    {activeProduct.specs || 'Не указаны'}
+                  </p>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase">Описание:</h4>
+                  <p className="text-sm text-slate-600">
+                    {activeProduct.description || 'Профессиональная оснастка высокого качества для стабильной и долговечной работы.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <div>
+                  <span className="text-2xl font-black text-slate-900">{activeProduct.price}</span>
+                  <span className="text-sm font-medium text-slate-500 ml-1">грн</span>
+                </div>
+                <button
+                  onClick={() => {
+                    addToCart(activeProduct);
+                    setActiveProduct(null);
+                  }}
+                  className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-5 py-2.5 rounded-xl text-sm flex items-center space-x-2 transition shadow-md"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>В корзину</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Окно корзины */}
       {isCartOpen && (
