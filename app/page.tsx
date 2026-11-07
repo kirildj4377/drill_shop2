@@ -1,12 +1,11 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Check, Trash2, Send, Package, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Search, Check, Trash2, Send, Package, RefreshCw, Image as ImageIcon } from 'lucide-react';
 
-const CATEGORIES = ['Все', 'Сверла', 'Буры', 'Коронки', 'Метчики', 'Плашки'];
+const CATEGORIES = ['Все', 'Сверло', 'Сверла', 'Бур', 'Буры', 'Коронка', 'Коронки', 'Метчик', 'Метчики', 'Плашка', 'Плашки'];
 
-// Вставьте сюда данные вашего Telegram бота
-const TELEGRAM_BOT_TOKEN = '9165001474:AAF2LOnpTU6ZdxiQ2g78AW9bMBG6qv-xpHM';
-const TELEGRAM_CHAT_ID = '-5304119008';
+const TELEGRAM_BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN';
+const TELEGRAM_CHAT_ID = 'YOUR_TELEGRAM_CHAT_ID';
 
 export default function ShopApp() {
   const [products, setProducts] = useState<any[]>([]);
@@ -23,19 +22,17 @@ export default function ShopApp() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // ЗАМЕНИТЕ ЭТУ ССЫЛКУ НА СВОЮ ОПУБЛИКОВАННУЮ ССЫЛКУ CSV ИЗ GOOGLE ТАБЛИЦ
-      const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTnNXX-vE88eqintLKDluTAtlHDp7HQ-wo_uNBbaB9SKcidb9oWd44VlckmSehp5q4Ps1eIce_e-8uS/pub?output=csv';
+      const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT.../pub?output=csv';
       
       const response = await fetch(SHEET_CSV_URL);
       const data = await response.text();
       
-      // Парсим CSV формат
       const rows = data.split('\n').map(row => row.split(','));
       const headers = rows[0].map(h => h.trim().replace(/"/g, ''));
       
       const parsedProducts = rows.slice(1).map((row, index) => {
         if (row.length < headers.length) return null;
-        const item: any = { id: index + 1 };
+        let item: any = { id: index + 1 };
         headers.forEach((header, i) => {
           let val: any = row[i] ? row[i].trim().replace(/"/g, '') : '';
           if (header === 'price') val = Number(val) || 0;
@@ -46,12 +43,7 @@ export default function ShopApp() {
 
       setProducts(parsedProducts);
     } catch (error) {
-      console.error('Ошибка загрузки таблицы, используем демо-данные', error);
-      // Запасной вариант, если таблица еще не подключена
-      setProducts([
-        { id: 1, name: 'Сверло по металлу HSS 6.0 мм', category: 'Сверла', price: 180, specs: 'DIN 338' },
-        { id: 2, name: 'Бур SDS-Plus 10x160 мм', category: 'Буры', price: 250, specs: 'Для бетона' }
-      ]);
+      console.error('Ошибка загрузки таблицы', error);
     } finally {
       setLoading(false);
     }
@@ -62,7 +54,6 @@ export default function ShopApp() {
   }, []);
 
   // Фильтрация товаров
- // Фильтрация товаров
   const filteredProducts = products.filter((product) => {
     const prodCategory = product.category ? product.category.trim().toLowerCase() : '';
     const selCategory = selectedCategory.trim().toLowerCase();
@@ -73,7 +64,7 @@ export default function ShopApp() {
     return matchesCategory && matchesSearch;
   });
 
-  // Работа с корзиной
+  // Корзина
   const addToCart = (product: any) => {
     setCart((prev: any[]) => {
       const existing = prev.find((item) => item.id === product.id);
@@ -212,27 +203,45 @@ ${itemsText}
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
-              <div key={product.id} className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col justify-between hover:shadow-lg transition">
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-1 rounded">
+              <div key={product.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col justify-between hover:shadow-lg transition">
+                {/* Картинка товара */}
+                <div className="w-full h-48 bg-slate-100 relative flex items-center justify-center overflow-hidden border-b border-slate-100">
+                  {product.image ? (
+                    <img 
+                      src={product.image} 
+                      alt={product.name} 
+                      className="w-full h-full object-cover hover:scale-105 transition duration-300"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center text-slate-400">
+                      <ImageIcon className="w-10 h-10 mb-1 opacity-50" />
+                      <span className="text-xs">Нет фото</span>
+                    </div>
+                  )}
+                  <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/90 backdrop-blur-sm px-2 py-0.5 rounded">
                     {product.category}
                   </span>
-                  <h3 className="font-bold text-lg text-slate-800 mt-2">{product.name}</h3>
-                  <p className="text-sm text-slate-500 mt-1">{product.specs}</p>
                 </div>
 
-                <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                <div className="p-5 flex-1 flex flex-col justify-between">
                   <div>
-                    <span className="text-2xl font-black text-slate-900">{product.price}</span>
-                    <span className="text-sm font-medium text-slate-500 ml-1">грн</span>
+                    <h3 className="font-bold text-base text-slate-800 leading-snug">{product.name}</h3>
+                    <p className="text-xs text-slate-500 mt-1">{product.specs}</p>
                   </div>
-                  <button
-                    onClick={() => addToCart(product)}
-                    className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center space-x-1 transition"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>В корзину</span>
-                  </button>
+
+                  <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div>
+                      <span className="text-xl font-black text-slate-900">{product.price}</span>
+                      <span className="text-xs font-medium text-slate-500 ml-1">грн</span>
+                    </div>
+                    <button
+                      onClick={() => addToCart(product)}
+                      className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1 transition"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      <span>В корзину</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
