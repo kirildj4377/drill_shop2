@@ -206,50 +206,57 @@ ${itemsText}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
               <div 
-                key={product.id} 
-                onClick={() => setActiveProduct(product)}
-                className="bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col justify-between hover:shadow-xl cursor-pointer transition transform hover:-translate-y-1"
-              >
-                {/* Картинка товара */}
-                <div className="w-full h-48 bg-slate-100 relative flex items-center justify-center overflow-hidden border-b border-slate-100">
-                  {product.image ? (
-                    <img 
-                      src={product.image} 
-                      alt={product.name} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center text-slate-400">
-                      <ImageIcon className="w-10 h-10 mb-1 opacity-50" />
-                      <span className="text-xs">Нет фото</span>
-                    </div>
-                  )}
-                  <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/90 backdrop-blur-sm px-2 py-0.5 rounded">
-                    {product.category}
-                  </span>
-                </div>
+  key={product.id} 
+  onClick={() => setActiveProduct(product)}
+  className="bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col justify-between hover:shadow-xl cursor-pointer transition transform hover:-translate-y-1 relative z-10"
+>
+  {/* Картинка товара с защитой от битых ссылок */}
+  <div className="w-full h-48 bg-slate-100 relative flex items-center justify-center overflow-hidden border-b border-slate-100">
+    {product.image ? (
+      <img 
+        src={product.image} 
+        alt={product.name} 
+        className="w-full h-full object-cover"
+        onError={(e: any) => {
+          // Если ссылка в таблице битая, картинка скрывается, а заглушка остается
+          e.target.style.display = 'none';
+          e.target.nextSibling.style.display = 'flex';
+        }}
+      />
+    ) : null}
+    
+    {/* Заглушка, если ссылки нет или картинка не загрузилась */}
+    <div className={`flex-col items-center text-slate-400 ${product.image ? 'hidden' : 'flex'}`}>
+      <ImageIcon className="w-10 h-10 mb-1 opacity-50" />
+      <span className="text-xs">Нет фото</span>
+    </div>
 
-                <div className="p-5 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-bold text-base text-slate-800 leading-snug">{product.name}</h3>
-                    <p className="text-xs text-slate-500 mt-1">{product.specs}</p>
-                  </div>
+    <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/90 backdrop-blur-sm px-2 py-0.5 rounded">
+      {product.category}
+    </span>
+  </div>
 
-                  <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-                    <div>
-                      <span className="text-xl font-black text-slate-900">{product.price}</span>
-                      <span className="text-xs font-medium text-slate-500 ml-1">грн</span>
-                    </div>
-                    <button
-                      onClick={(e) => addToCart(product, e)}
-                      className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1 transition"
-                    >
-                      <ShoppingCart className="w-4 h-4" />
-                      <span>В корзину</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
+  <div className="p-5 flex-1 flex flex-col justify-between">
+    <div>
+      <h3 className="font-bold text-base text-slate-800 leading-snug">{product.name}</h3>
+      <p className="text-xs text-slate-500 mt-1">{product.specs}</p>
+    </div>
+
+    <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+      <div>
+        <span className="text-xl font-black text-slate-900">{product.price}</span>
+        <span className="text-xs font-medium text-slate-500 ml-1">грн</span>
+      </div>
+      <button
+        onClick={(e) => addToCart(product, e)}
+        className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1 transition z-20 relative"
+      >
+        <ShoppingCart className="w-4 h-4" />
+        <span>В корзину</span>
+      </button>
+    </div>
+  </div>
+</div>
             ))}
           </div>
         )}
