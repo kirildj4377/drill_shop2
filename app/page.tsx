@@ -62,8 +62,12 @@ export default function ShopApp() {
   }, []);
 
   // Фильтрация товаров
+ // Фильтрация товаров
   const filteredProducts = products.filter((product) => {
-    const matchesCategory = selectedCategory === 'Все' || product.category === selectedCategory;
+    const prodCategory = product.category ? product.category.trim().toLowerCase() : '';
+    const selCategory = selectedCategory.trim().toLowerCase();
+    
+    const matchesCategory = selectedCategory === 'Все' || prodCategory === selCategory;
     const matchesSearch = product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           product.specs?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
