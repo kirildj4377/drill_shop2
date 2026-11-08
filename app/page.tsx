@@ -19,7 +19,7 @@ export default function ShopApp() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSent, setOrderSent] = useState(false);
 
-  // Загрузка товаров из Google Таблицы (через CSV-ссылку)
+ // Загрузка товаров из Google Таблицы с умным парсером CSV
   const fetchProducts = async () => {
     setLoading(true);
     try {
@@ -28,14 +28,39 @@ export default function ShopApp() {
       const response = await fetch(SHEET_CSV_URL);
       const data = await response.text();
       
-      const rows = data.split('\n').map(row => row.split(','));
-      const headers = rows[0].map(h => h.trim().replace(/"/g, ''));
+      // Регулярное выражение для правильного разбиения CSV с учетом запятых внутри кавычек
+      const parseCSVLine = (text: string) => {
+        const result: string[] = [];
+        let cell = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(cell.trim().replace(/^"|"$/g, ''));
+            cell = '';
+          } else {
+            cell += char;
+          }
+        }
+        result.push(cell.trim().replace(/^"|"$/g, ''));
+        return result;
+      };
+
+      const rows = data.split(/\r?\n/).filter(line => line.trim() !== '');
+      if (rows.length === 0) return;
+
+      const headers = parseCSVLine(rows[0]).map(h => h.trim());
       
-      const parsedProducts = rows.slice(1).map((row, index) => {
+      const parsedProducts = rows.slice(1).map((rowStr, index) => {
+        const row = parseCSVLine(rowStr);
         if (row.length < headers.length) return null;
+
         let item: any = { id: index + 1 };
         headers.forEach((header, i) => {
-          let val: any = row[i] ? row[i].trim().replace(/"/g, '') : '';
+          let val: any = row[i] ? row[i] : '';
           if (header === 'price') val = Number(val) || 0;
           item[header] = val;
         });
