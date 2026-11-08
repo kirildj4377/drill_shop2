@@ -7,28 +7,29 @@ const CATEGORIES = ['Все', 'Сверло', 'Сверла', 'Бур', 'Бур�
 const TELEGRAM_BOT_TOKEN = '9165001474:AAF2LOnpTU6ZdxiQ2g78AW9bMBG6qv-xpHM';
 const TELEGRAM_CHAT_ID = '-5304119008';
 
+
 export default function ShopApp() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [searchQuery, setSearchQuery] = useState('');
+  const [visibleCount, setVisibleCount] = useState(15); // Лимит отображаемых товаров
   const [cart, setCart] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [activeProduct, setActiveProduct] = useState<any>(null); // Для модального окна товара
+  const [activeProduct, setActiveProduct] = useState<any>(null);
   const [customer, setCustomer] = useState({ name: '', phone: '', comment: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSent, setOrderSent] = useState(false);
 
- // Загрузка товаров из Google Таблицы с умным парсером CSV
+  // Загрузка товаров из Google Таблицы с умным парсером CSV
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTnNXX-vE88eqintLKDluTAtlHDp7HQ-wo_uNBbaB9SKcidb9oWd44VlckmSehp5q4Ps1eIce_e-8uS/pub?output=csv';
+     const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTnNXX-vE88eqintLKDluTAtlHDp7HQ-wo_uNBbaB9SKcidb9oWd44VlckmSehp5q4Ps1eIce_e-8uS/pub?output=csv';
       
       const response = await fetch(SHEET_CSV_URL);
       const data = await response.text();
       
-      // Регулярное выражение для правильного разбиения CSV с учетом запятых внутри кавычек
       const parseCSVLine = (text: string) => {
         const result: string[] = [];
         let cell = '';
@@ -79,6 +80,11 @@ export default function ShopApp() {
     fetchProducts();
   }, []);
 
+  // Сбрасываем лимит показа при смене категории или поискового запроса
+  useEffect(() => {
+    setVisibleCount(15);
+  }, [selectedCategory, searchQuery]);
+
   // Фильтрация товаров
   const filteredProducts = products.filter((product) => {
     const prodCategory = product.category ? product.category.trim().toLowerCase() : '';
@@ -90,9 +96,12 @@ export default function ShopApp() {
     return matchesCategory && matchesSearch;
   });
 
+  // Срез товаров для отображения (постранично по 15 штук)
+  const displayedProducts = filteredProducts.slice(0, visibleCount);
+
   // Корзина
   const addToCart = (product: any, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation(); // чтобы при клике на кнопку не открывалось модальное окно товара
+    if (e) e.stopPropagation();
     setCart((prev: any[]) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
@@ -228,62 +237,73 @@ ${itemsText}
         {loading ? (
           <div className="text-center py-20 text-slate-500">Загрузка товаров из таблицы...</div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <div 
-  key={product.id} 
-  onClick={() => setActiveProduct(product)}
-  className="bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col justify-between hover:shadow-xl cursor-pointer transition transform hover:-translate-y-1 relative z-10"
->
-  {/* Картинка товара с защитой от битых ссылок */}
-  <div className="w-full h-48 bg-slate-100 relative flex items-center justify-center overflow-hidden border-b border-slate-100">
-    {product.image ? (
-      <img 
-        src={product.image} 
-        alt={product.name} 
-        className="w-full h-full object-cover"
-        onError={(e: any) => {
-          // Если ссылка в таблице битая, картинка скрывается, а заглушка остается
-          e.target.style.display = 'none';
-          e.target.nextSibling.style.display = 'flex';
-        }}
-      />
-    ) : null}
-    
-    {/* Заглушка, если ссылки нет или картинка не загрузилась */}
-    <div className={`flex-col items-center text-slate-400 ${product.image ? 'hidden' : 'flex'}`}>
-      <ImageIcon className="w-10 h-10 mb-1 opacity-50" />
-      <span className="text-xs">Нет фото</span>
-    </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {displayedProducts.map((product) => (
+                <div 
+                  key={product.id} 
+                  onClick={() => setActiveProduct(product)}
+                  className="bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col justify-between hover:shadow-xl cursor-pointer transition transform hover:-translate-y-1 relative z-10"
+                >
+                  <div className="w-full h-48 bg-slate-100 relative flex items-center justify-center overflow-hidden border-b border-slate-100">
+                    {product.image ? (
+                      <img 
+                        src={product.image} 
+                        alt={product.name} 
+                        className="w-full h-full object-cover"
+                        onError={(e: any) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    
+                    <div className={`flex-col items-center text-slate-400 ${product.image ? 'hidden' : 'flex'}`}>
+                      <ImageIcon className="w-10 h-10 mb-1 opacity-50" />
+                      <span className="text-xs">Нет фото</span>
+                    </div>
 
-    <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/90 backdrop-blur-sm px-2 py-0.5 rounded">
-      {product.category}
-    </span>
-  </div>
+                    <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/90 backdrop-blur-sm px-2 py-0.5 rounded">
+                      {product.category}
+                    </span>
+                  </div>
 
-  <div className="p-5 flex-1 flex flex-col justify-between">
-    <div>
-      <h3 className="font-bold text-base text-slate-800 leading-snug">{product.name}</h3>
-      <p className="text-xs text-slate-500 mt-1">{product.specs}</p>
-    </div>
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-bold text-base text-slate-800 leading-snug">{product.name}</h3>
+                      <p className="text-xs text-slate-500 mt-1">{product.specs}</p>
+                    </div>
 
-    <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-      <div>
-        <span className="text-xl font-black text-slate-900">{product.price}</span>
-        <span className="text-xs font-medium text-slate-500 ml-1">грн</span>
-      </div>
-      <button
-        onClick={(e) => addToCart(product, e)}
-        className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1 transition z-20 relative"
-      >
-        <ShoppingCart className="w-4 h-4" />
-        <span>В корзину</span>
-      </button>
-    </div>
-  </div>
-</div>
-            ))}
-          </div>
+                    <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                      <div>
+                        <span className="text-xl font-black text-slate-900">{product.price}</span>
+                        <span className="text-xs font-medium text-slate-500 ml-1">грн</span>
+                      </div>
+                      <button
+                        onClick={(e) => addToCart(product, e)}
+                        className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1 transition z-20 relative"
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                        <span>В корзину</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Кнопка «Показать еще» */}
+            {visibleCount < filteredProducts.length && (
+              <div className="text-center mt-10">
+                <button
+                  onClick={() => setVisibleCount((prev) => prev + 15)}
+                  className="bg-white border border-slate-300 hover:bg-slate-100 font-semibold px-8 py-3 rounded-xl text-slate-700 transition shadow-sm"
+                >
+                  Показать еще товары ({filteredProducts.length - visibleCount} доступно)
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 
@@ -298,7 +318,6 @@ ${itemsText}
               <X className="w-5 h-5" />
             </button>
 
-            {/* Картинка в модалке */}
             <div className="w-full md:w-1/2 bg-slate-100 flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-slate-100">
               {activeProduct.image ? (
                 <img src={activeProduct.image} alt={activeProduct.name} className="max-h-72 object-contain rounded-lg" />
@@ -310,7 +329,6 @@ ${itemsText}
               )}
             </div>
 
-            {/* Информация в модалке */}
             <div className="w-full md:w-1/2 p-6 flex flex-col justify-between overflow-y-auto">
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-1 rounded">
