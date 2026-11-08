@@ -1,8 +1,6 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Check, Trash2, Send, Package, RefreshCw, Image as ImageIcon, X } from 'lucide-react';
-
-const CATEGORIES = ['Все', 'Сверло', 'Сверла', 'Бур', 'Буры', 'Коронка', 'Коронки', 'Метчик', 'Метчики', 'Плашка', 'Плашки'];
+import React, { useState, useEffect, useMemo } from 'react';
+import { ShoppingCart, Search, Check, Trash2, Send, Package, RefreshCw, Image as ImageIcon, X, ArrowUpDown, SlidersHorizontal } from 'lucide-react';
 
 const TELEGRAM_BOT_TOKEN = '9165001474:AAF2LOnpTU6ZdxiQ2g78AW9bMBG6qv-xpHM';
 const TELEGRAM_CHAT_ID = '-5304119008';
@@ -11,9 +9,15 @@ const TELEGRAM_CHAT_ID = '-5304119008';
 export default function ShopApp() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Состояния фильтров и сортировки
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [searchQuery, setSearchQuery] = useState('');
-  const [visibleCount, setVisibleCount] = useState(15); // Лимит отображаемых товаров
+  const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc' | 'name-asc'>('default');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
+  
+  const [visibleCount, setVisibleCount] = useState(15);
   const [cart, setCart] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState<any>(null);
@@ -21,11 +25,11 @@ export default function ShopApp() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSent, setOrderSent] = useState(false);
 
-  // Загрузка товаров из Google Таблицы с умным парсером CSV
+  // Загрузка товаров из Google Таблицы
   const fetchProducts = async () => {
     setLoading(true);
     try {
-     const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTnNXX-vE88eqintLKDluTAtlHDp7HQ-wo_uNBbaB9SKcidb9oWd44VlckmSehp5q4Ps1eIce_e-8uS/pub?output=csv';
+      const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTnNXX-vE88eqintLKDluTAtlHDp7HQ-wo_uNBbaB9SKcidb9oWd44VlckmSehp5q4Ps1eIce_e-8uS/pub?output=csv';
       
       const response = await fetch(SHEET_CSV_URL);
       const data = await response.text();
@@ -80,24 +84,55 @@ export default function ShopApp() {
     fetchProducts();
   }, []);
 
-  // Сбрасываем лимит показа при смене категории или поискового запроса
+  // Динамический список категорий прямо из таблицы
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => {
+      if (p.category) set.add(p.category.trim());
+    });
+    return ['Все', ...Array.from(set)];
+  }, [products]);
+
+  // Сбрасываем количество показанных товаров при изменении фильтров
   useEffect(() => {
     setVisibleCount(15);
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery, sortBy, minPrice, maxPrice]);
 
-  // Фильтрация товаров
-  const filteredProducts = products.filter((product) => {
-    const prodCategory = product.category ? product.category.trim().toLowerCase() : '';
-    const selCategory = selectedCategory.trim().toLowerCase();
-    
-    const matchesCategory = selectedCategory === 'Все' || prodCategory === selCategory;
-    const matchesSearch = product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          product.specs?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  // Фильтрация товаров по поиску, категории и диапазону цен
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const prodCat = product.category ? product.category.trim().toLowerCase() : '';
+      const selCat = selectedCategory.trim().toLowerCase();
+      const matchesCategory = selectedCategory === 'Все' || prodCat === selCat;
 
-  // Срез товаров для отображения (постранично по 15 штук)
-  const displayedProducts = filteredProducts.slice(0, visibleCount);
+      const matchesSearch = product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            product.specs?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const price = Number(product.price) || 0;
+      const min = minPrice !== '' ? Number(minPrice) : 0;
+      const max = maxPrice !== '' ? Number(maxPrice) : Infinity;
+      const matchesPrice = price >= min && price <= max;
+
+      return matchesCategory && matchesSearch && matchesPrice;
+    });
+  }, [products, selectedCategory, searchQuery, minPrice, maxPrice]);
+
+  // Сортировка отфильтрованных товаров
+  const sortedProducts = useMemo(() => {
+    const list = [...filteredProducts];
+    if (sortBy === 'price-asc') {
+      return list.sort((a, b) => Number(a.price) - Number(b.price));
+    }
+    if (sortBy === 'price-desc') {
+      return list.sort((a, b) => Number(b.price) - Number(a.price));
+    }
+    if (sortBy === 'name-asc') {
+      return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+    return list;
+  }, [filteredProducts, sortBy]);
+
+  const displayedProducts = sortedProducts.slice(0, visibleCount);
 
   // Корзина
   const addToCart = (product: any, e?: React.MouseEvent) => {
@@ -121,7 +156,7 @@ export default function ShopApp() {
 
   const totalPrice = cart.reduce((sum, item) => sum + Number(item.price) * item.count, 0);
 
-  // Отправка в Telegram
+  // Отправка заказа в Telegram
   const handleSendOrder = async (e: any) => {
     e.preventDefault();
     if (cart.length === 0 || !customer.phone) return;
@@ -174,6 +209,7 @@ ${itemsText}
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+      {/* Шапка */}
       <header className="sticky top-0 z-30 bg-slate-900 text-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -205,26 +241,66 @@ ${itemsText}
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Панель поиска, фильтра по цене и сортировки */}
         <div className="mb-8 space-y-4">
-          <div className="relative max-w-xl">
-            <Search className="absolute left-3 top-3 text-slate-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Поиск по названию или характеристикам..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-            />
+          <div className="flex flex-col md:flex-row gap-3">
+            {/* Поиск */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 text-slate-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Поиск по названию или характеристикам..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+              />
+            </div>
+
+            {/* Фильтр по цене */}
+            <div className="flex items-center space-x-2 bg-white px-3 py-1.5 border border-slate-300 rounded-xl">
+              <SlidersHorizontal className="w-4 h-4 text-slate-400" />
+              <span className="text-xs font-semibold text-slate-500">Цена:</span>
+              <input
+                type="number"
+                placeholder="От"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+                className="w-20 p-1 text-sm border rounded outline-none focus:ring-1 focus:ring-amber-500"
+              />
+              <span className="text-slate-400">-</span>
+              <input
+                type="number"
+                placeholder="До"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                className="w-20 p-1 text-sm border rounded outline-none focus:ring-1 focus:ring-amber-500"
+              />
+            </div>
+
+            {/* Выпадающий список сортировки */}
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e: any) => setSortBy(e.target.value)}
+                className="w-full md:w-auto py-2.5 px-4 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+              >
+                <option value="default">По умолчанию</option>
+                <option value="price-asc">Сначала дешевле</option>
+                <option value="price-desc">Сначала дороже</option>
+                <option value="name-asc">По названию (А-Я)</option>
+              </select>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((cat) => (
+          {/* Категории товаров */}
+          <div className="flex flex-wrap gap-2 pt-2">
+            {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
                   selectedCategory === cat
-                    ? 'bg-slate-900 text-white'
+                    ? 'bg-slate-900 text-white shadow-sm'
                     : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
                 }`}
               >
@@ -234,6 +310,7 @@ ${itemsText}
           </div>
         </div>
 
+        {/* Загрузка / Вывод товаров */}
         {loading ? (
           <div className="text-center py-20 text-slate-500">Загрузка товаров из таблицы...</div>
         ) : (
@@ -253,7 +330,7 @@ ${itemsText}
                         className="w-full h-full object-cover"
                         onError={(e: any) => {
                           e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
+                          if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
                         }}
                       />
                     ) : null}
@@ -292,14 +369,20 @@ ${itemsText}
               ))}
             </div>
 
+            {displayedProducts.length === 0 && (
+              <div className="text-center py-16 text-slate-500">
+                Товары по вашему запросу не найдены.
+              </div>
+            )}
+
             {/* Кнопка «Показать еще» */}
-            {visibleCount < filteredProducts.length && (
+            {visibleCount < sortedProducts.length && (
               <div className="text-center mt-10">
                 <button
                   onClick={() => setVisibleCount((prev) => prev + 15)}
                   className="bg-white border border-slate-300 hover:bg-slate-100 font-semibold px-8 py-3 rounded-xl text-slate-700 transition shadow-sm"
                 >
-                  Показать еще товары ({filteredProducts.length - visibleCount} доступно)
+                  Показать еще товары ({sortedProducts.length - visibleCount} доступно)
                 </button>
               </div>
             )}
